@@ -5,42 +5,28 @@ Created on Mon Aug 27 09:17:25 2018
 @author: William Huang
 """
 
-#import quandl
 import pandas as pd
 from yahoofinancials import YahooFinancials
 import datetime as dt
 import numpy as np
 import math
-import threading
 
 class FinanceData:
     def __init__(self, approach = 'Yahoo'):
+		# Initialize the parameters
+		# ----Input-----
+		# approach: specify the data source, in current version, the Yahoo is the only available one
+		# ----output----
         if(approach not in ['Yahoo']):
             raise Exception("Invalid approach, only allowed Yahoo , not", approach)
         self.approach = approach
-        # self.quandlKey = quandlKey
-        # quandl.ApiConfig.api_key = self.quandlKey
-        
-    def getTable(self, ticker, startDate, endDate,columns = ['close', 'date'], dateAscending = True):
-        '''if(self.approach == 'Quandl'):
-            table = quandl.get_table('WIKI/PRICES',
-                       qopts = {'columns':columns},
-                       ticker = ticker, 
-                       date = {'gte':startDate,'lte':endDate},paginate=True)
-            print(table)'''
-            
-        if(self.approach == 'Yahoo'):
-            table = YahooFinancials(ticker)
-            table = pd.DataFrame(table.get_historical_price_data(startDate,endDate,'daily')[ticker]['prices'])
-            newColumns = FinanceData.columnNameMapping(columns)
-            table = table[newColumns]
-            table.columns = columns
-            
-        if('date' in columns):
-            table = table.sort_values(by = 'date',axis = 0,ascending = dateAscending)
-        return table.reset_index(drop=True)
     
     def columnNameMapping(columns):
+		# Mapping the column names from different data source to unitized names
+		# ----Input-----
+		# columns: the original column names
+		# ----output----
+		# unitized column names
         '''Quandl column names: 'ticker','date','open','high','low','close','adj_close','volume'''
         '''Yahoo column name: 'adjclose', 'close', 'date', 'formatted_date', 'high', 'low', 'open','volume'''
         modifiedColumns = columns.copy()
@@ -51,6 +37,14 @@ class FinanceData:
         return modifiedColumns
     
     def getPrice(self,ticker,startDate,endDate,dateAscending = True):
+		# Get the price seires for single ticker
+		# ----Input-----
+		# ticker: ticker name for the stock
+		# startDate: the start date of price series, the format is 'YYYY-MM-DD'
+		# endDate: the end date of price series, the format is 'YYYY-MM-DD'
+		# dateAscending: whether rank the price series by date ascending, the default value is true
+		# ----output----
+		# price series for multiple stocks in pandas DataFrame formate and use date as index
         if(self.approach == 'Yahoo'):
             table = YahooFinancials(ticker)
             table = pd.DataFrame(table.get_historical_price_data(startDate,endDate,'daily')[ticker]['prices'])
@@ -60,7 +54,75 @@ class FinanceData:
             table = table.set_index('date')
             table.index = pd.to_datetime(table.index)
             return table
+		
+		
+	def getPriceTable(self,tickerList,startDate,endDate,dateAscending = True):
+		# Get the price seires for multiple tickers
+		# ----Input-----
+		# tickerList: ticker name for multiple stocks
+		# startDate: the start date of price series, the format is 'YYYY-MM-DD'
+		# endDate: the end date of price series, the format is 'YYYY-MM-DD'
+		# dateAscending: whether rank the price series by date ascending, the default value is true
+		# ----output----
+		# price series for single stock in pandas DataFrame formate and use date as index
+        tables = []
+        for ticker in tickerList:
+            tables.append(self.getPrice(ticker,startDate,endDate,dateAscending = True))
+			
+        return pd.concat(tables,axis = 1)
+	
+	def getDetailPriceInfo(self, ticker, start_date, end_date, columns = ['close','date'], dateAscending = True, frequency = 'D')
+		# Get the aggregated detailed price seires for single ticker, including open, high, low, close, adj_close, volume
+		# ----Input-----
+		# ticker: ticker name for single stocks
+		# startDate: the start date of price series, the format is 'YYYY-MM-DD'
+		# endDate: the end date of price series, the format is 'YYYY-MM-DD'
+		# columns: the columns in the output DataFrame, the default columns are 'close' and 'date' 
+		# dateAscending: whether rank the price series by date ascending, the default value is true
+		# frequency: aggregate frequency, default value is 'D', also accept 'W' for week and 'M' for month 
+		# ----output----
+		# aggregated price sereis for single stock
+		if(frequency not in ['D','W','M']):
+            raise Exception('''invalid frequency, available range ['D','W','M']''', frequency)
 
+        available_Columns = ['date','open','high','close','adj_close', 'low', 'volume']
+        for column in columns:
+            if(column not in available_Columns):
+                raise Exception('''invalid column names, available range ['date','open','high','close','adj_close', 'low', 'volume']''', column)
+        if('date' not in columns):
+            columns.append('date')
+		
+		
+		if(self.approach == 'Yahoo'):
+            table = YahooFinancials(ticker)
+            table = pd.DataFrame(table.get_historical_price_data(startDate,endDate,'daily')[ticker]['prices'])
+            newColumns = FinanceData.columnNameMapping(columns)
+            table = table[newColumns]
+            table.columns = columns
+		if('date' in columns):
+            table = table.sort_values(by = 'date',axis = 0,ascending = dateAscending)
+		table = table.set_index('date')
+        table.index = pd.to_datetime(table.index)
+		
+		if(frequency == 'D'):
+            return table
+        else:
+            result = []
+            for column in columns:
+                if(column in ['open']):
+                    result.append(table.resample(frequency).first()[column])
+                elif(column in ['close','adj_close']):
+                    result.append(table.resample(frequency).last()[column])
+                elif(column in ['high']):
+                    result.append(table.resample(frequency).max()[column])
+                elif(column in ['low']):
+                    result.append(table.resample(frequency).min()[column])
+                elif (column in ['volume']):
+                    result.append(table.resample(frequency).sum()[column])
+            return(pd.concat(result,axis=1))
+		
+		
+		
     def getMarketCapThread(self,df,start,end):
         for i in range(start,end):
             try:
@@ -99,14 +161,8 @@ class FinanceData:
         return df
 
 
-    def getPriceTable(self,tickerList,startDate,endDate,dateAscending = True):
-        tables = []
-        for ticker in tickerList:
-            tables.append(self.getPrice(ticker,startDate,endDate,dateAscending = True))
 
-        #return pd.concat(tables, axis=1).dropna(axis = 0,how = 'any')
-        return pd.concat(tables,axis = 1)
-        #return pd.concat(tables, axis=1).fillna(method = 'ffill').fillna(method = 'bfill')
+
             
     def getVol(self,ticker,window = 365):
         endDate = dt.date.today().isoformat()
@@ -162,24 +218,4 @@ class FinanceData:
                     result.append(table.resample(frequency).sum()[column])
             return(pd.concat(result,axis=1))
 
-    def filter(self,path,top = 20):
-        table = pd.read_csv(path)
-        table = table.sort_values(['GIC Sector','MarketCap'],ascending = [True,False])
-        table = table[table['GIC Sector'] != 'None']
-        return table.groupby(by='GIC Sector').head(top)
 
-'''
-test = FinanceData()
-sD = '2018-08-01'
-eD = '2018-08-10'
-columns = ['close', 'volume']
-print(test.gettable('AMZN', sD, eD, columns,frequency = 'D'))
-print('\n',test.getMarketCap('AMZN'))'''
-
-'''
-test = FinanceData()
-table = pd.read_csv('testTicker.csv')
-outputTable = test.getMarketCaps(table,10)
-outputTable.to_csv('testOutput.csv',index = False)
-test.filter('testOutput.csv',top = 5)
-'''
