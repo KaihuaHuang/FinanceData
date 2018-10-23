@@ -6,5 +6,8 @@ Third-Party Dependency: yahoofinancials, numpy, pandas
 Report any bugs by opening an issue here: https://github.com/KaihuaHuang/VaR/issues  
 ## Methods
 ### getPrice(ticker,startDate,endDate,dateAscending = True)
-Get the price series for single ticker  
+### getPriceTable(tickerList,startDate,endDate,dateAscending = True)
+### getDetailPriceInfo(ticker, startDate, endDate, columns = ['close','date'], dateAscending = True, frequency = 'D')
+### getVol(ticker,window = 365)
+### getMarketCap(ticker)
 
