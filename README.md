@@ -3,7 +3,7 @@ Finance data retrieve library. A warp of yahoofinancials library for easy use. T
 Current Version: v1.0  
 Version Released: 10/23/2018  
 Third-Party Dependency: yahoofinancials, numpy, pandas  
-Report any bugs by opening an issue here: https://github.com/KaihuaHuang/VaR/issues  
+Report any bugs by opening an issue here: https://github.com/KaihuaHuang/FinanceData/issues  
 ## Methods
 getPrice(ticker,startDate,endDate,dateAscending = True)  
 getPriceTable(tickerList,startDate,endDate,dateAscending = True)  
