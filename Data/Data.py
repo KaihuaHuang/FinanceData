@@ -11,6 +11,10 @@ import datetime as dt
 import numpy as np
 import math
 import threading
+from bdateutil import isbday
+from bdateutil import relativedelta
+
+import holidays
 
 class FinanceData:
 	def __init__(self, approach = 'Yahoo'):
@@ -22,6 +26,7 @@ class FinanceData:
 			raise Exception("Invalid approach, only allowed Yahoo , not", approach)
 		self.approach = approach
 
+	@staticmethod
 	def columnNameMapping(columns):
 		# Mapping the column names from different data source to unitized names
 		# ----Input-----
@@ -46,30 +51,109 @@ class FinanceData:
 		# dateAscending: whether rank the price series by date ascending, the default value is true
 		# ----output----
 		# price series for multiple stocks in pandas DataFrame format and use date as index
+		startDate = dt.datetime.strptime(startDate, '%Y-%m-%d').date()
+		endDate = dt.datetime.strptime(endDate, '%Y-%m-%d').date()
+
+		if (startDate > endDate):
+			raise Exception('startDate is later than endDate')
+		#table = YahooFinancials(ticker)
+		#yahooPrices = table.get_historical_price_data(startDate.isoformat(), endDate.isoformat(), 'daily')[ticker]['prices']
 		if(self.approach == 'Yahoo'):
-			table = YahooFinancials(ticker)
-			table = pd.DataFrame(table.get_historical_price_data(startDate,endDate,'daily')[ticker]['prices'])
-			table = table[['adjclose','formatted_date']]
-			table.columns = [ticker,'date']
-			table = table.sort_values(by = 'date',axis = 0,ascending = dateAscending)
-			table = table.set_index('date')
-			table.index = pd.to_datetime(table.index)
+			try:
+				table = YahooFinancials(ticker)
+				yahooPrices = table.get_historical_price_data(startDate.isoformat(),endDate.isoformat(),'daily')[ticker]['prices']
+				table = pd.DataFrame(yahooPrices)
+				table = table[['adjclose','formatted_date']]
+				table.columns = [ticker,'date']
+				table = table.sort_values(by = 'date',axis = 0,ascending = dateAscending)
+				table = table.set_index('date')
+				table.index = pd.to_datetime(table.index)
+			except:
+				table = pd.DataFrame(columns = [ticker,'date'])
+				table = table.set_index('date')
 			return table
-		
-	def getPriceTable(self,tickerList,startDate,endDate,dateAscending = True):
+
+	def getPriceTable(self,tickerList,startDate = None,endDate = None,localCheck = None,dateAscending = True, update = False):
 		# Get the price series for multiple tickers
 		# ----Input-----
 		# tickerList: ticker name for multiple stocks
 		# startDate: the start date of price series, the format is 'YYYY-MM-DD'
 		# endDate: the end date of price series, the format is 'YYYY-MM-DD'
 		# dateAscending: whether rank the price series by date ascending, the default value is true
+		# localCheck: loading local csv file, check the existing data see whether we need to retrieve data from Yahoo. The local file should contain date as index.
+		# update: whether to update local file
 		# ----output----
 		# price series for single stock in pandas DataFrame format and use date as index
+
+		if(endDate == None):
+			endDate = dt.date.today() + relativedelta(bdays=-1,holidays = holidays.US())
+		else:
+			endDate = dt.datetime.strptime(endDate, '%Y-%m-%d').date()
+		if(startDate == None):
+			startDate = endDate + relativedelta(bdays=-252,holidays = holidays.US())
+		else:
+			startDate = dt.datetime.strptime(startDate,'%Y-%m-%d').date()
+
+
+		if(startDate > endDate):
+			raise Exception('startDate is later than endDate')
+
+		if (isinstance(tickerList, str)):
+			tickerList = [tickerList, ]
+
+		if(localCheck!=None):
+			try:
+				localFile = pd.read_csv(localCheck,index_col='date',parse_dates=True)
+			except:
+				raise Exception('Read Local File Error')
+
+			if(np.all([ticker in localFile.columns for ticker in tickerList]) == False):
+				raise Exception('''Local File Columns Doesn't Match Ticker List''')
+
+			# Make sure it's business day
+			if(isbday(startDate,holidays = holidays.US()) == False):
+				startDateCehck = startDate + relativedelta(bdays=1)
+			else:
+				startDateCehck = startDate
+
+			if (isbday(endDate, holidays=holidays.US()) == False):
+				endDateCehck = endDate + relativedelta(bdays=-1)
+			else:
+				endDateCehck = endDate
+
+
+
+
+			if(startDateCehck in localFile.index and endDateCehck in localFile.index):
+				return localFile[startDate.isoformat():endDate.isoformat()]
+
+			if(startDate < localFile.index[0].date()):
+				readStart = startDate
+				if(endDate <= localFile.index[-1].date()):
+					readEnd = localFile.index[0].date()
+				else:
+					readEnd = endDate
+			else:
+				readStart = localFile.index[-1].date()
+				readEnd = endDate
+
+
+			tables = []
+
+			for ticker in tickerList:
+				# print(ticker)
+				tables.append(self.getPrice(ticker, readStart.isoformat(), readEnd.isoformat(), dateAscending=True))
+			missingComponents = pd.concat(tables,axis = 1)
+			localFile = pd.concat([localFile, missingComponents], axis=0).sort_index(ascending=True)
+			localFile = localFile[~localFile.index.duplicated()]
+			if(update):
+				localFile.to_csv(localCheck,index = True)
+			return localFile[startDate.isoformat():endDate.isoformat()]
+
+
 		tables = []
-		if(isinstance(tickerList,str)):
-			tickerList = [tickerList,]
 		for ticker in tickerList:
-			tables.append(self.getPrice(ticker,startDate,endDate,dateAscending = True))
+			tables.append(self.getPrice(ticker,startDate.isoformat(),endDate.isoformat(),dateAscending = True))
 			
 		return pd.concat(tables,axis = 1)
 	
