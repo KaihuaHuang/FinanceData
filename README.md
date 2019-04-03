@@ -1,4 +1,6 @@
 # FinanceData  
+[![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Finance data retrieve library. A warp of yahoofinancials library for easy use. Thanks to yahoofinancials https://github.com/JECSand/yahoofinancials  
 Current Version: v1.0  
 Version Released: 10/23/2018  
