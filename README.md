@@ -29,11 +29,19 @@ Report any bugs by opening an issue here: https://github.com/KaihuaHuang/Finance
 > - ----output----
 >> price series for single stock in pandas DataFrame format and use date as index
 
+**3. getDetailPriceInfo(ticker, startDate, endDate, columns = ['close','date'], dateAscending = True, frequency = 'D')**
+> - Get the aggregated detailed price series for single ticker, including open, high, low, close, adj_close, volume
+> - ----Input-----
+>> ticker: ticker name for single stocks  
+>> startDate: the start date of price series, the format is 'YYYY-MM-DD'  
+>> endDate: the end date of price series, the format is 'YYYY-MM-DD'  
+>> columns: the columns in the output DataFrame, the default columns are 'close' and 'date'   
+            avalible columns: ['date','open','high','close','adj_close', 'low', 'volume']  
+>> dateAscending: whether rank the price series by date ascending, the default value is true  
+>> frequency: aggregate frequency, default value is 'D', also accept 'W' for week and 'M' for month   
+> - ----output----
+>> aggregated price series for single stock
 
-
-
-
-getDetailPriceInfo(ticker, startDate, endDate, columns = ['close','date'], dateAscending = True, frequency = 'D')  
-getVol(ticker,window = 365)  
-getMarketCap(ticker)  
+4. getVol(ticker,window = 365)  
+5. getMarketCap(ticker)  
 
