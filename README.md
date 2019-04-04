@@ -7,8 +7,32 @@ Version Released: 10/23/2018
 Third-Party Dependency: yahoofinancials, numpy, pandas  
 Report any bugs by opening an issue here: https://github.com/KaihuaHuang/FinanceData/issues  
 ## Methods
-getPrice(ticker,startDate,endDate,dateAscending = True)  
-getPriceTable(tickerList,startDate,endDate,dateAscending = True)  
+**1. getPrice(ticker,startDate,endDate,dateAscending = True)** 
+> - Get the price series for single ticker
+>  - ----Input----
+>> ticker: ticker name for the stock  
+>> startDate: the start date of price series, the format is 'YYYY-MM-DD'  
+>> endDate: the end date of price series, the format is 'YYYY-MM-DD'  
+>> dateAscending: whether rank the price series by date ascending, the default value is true  
+> - ----output----
+>> price series for multiple stocks in pandas DataFrame format and use date as index  
+
+**2. getPriceTable(tickerList,startDate,endDate,dateAscending = True)**    
+> - Get the price series for multiple tickers
+> - ----Input-----
+>> tickerList: ticker name for multiple stocks  
+>> startDate: the start date of price series, the format is 'YYYY-MM-DD'  
+>> endDate: the end date of price series, the format is 'YYYY-MM-DD'  
+>> dateAscending: whether rank the price series by date ascending, the default value is true  
+>> localCheck: loading local csv file, check the existing data see whether we need to retrieve data from Yahoo. The local file should contain date as index.  
+>> update: whether to update local file  
+> - ----output----
+>> price series for single stock in pandas DataFrame format and use date as index
+
+
+
+
+
 getDetailPriceInfo(ticker, startDate, endDate, columns = ['close','date'], dateAscending = True, frequency = 'D')  
 getVol(ticker,window = 365)  
 getMarketCap(ticker)  
